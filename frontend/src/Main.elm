@@ -120,7 +120,7 @@ type alias Model =
     , submitting : Bool
     , key : Nav.Key
     , todayDays : Int
-    , currentTime : Time.Posix
+    , currentTime : Maybe Time.Posix
     , weather : Maybe Weather
     , lastWeatherFetch : Time.Posix
     }
@@ -221,7 +221,7 @@ init flags url key =
       , submitting = False
       , key = key
       , todayDays = todayDays
-      , currentTime = Time.millisToPosix 0
+      , currentTime = Nothing
       , weather = Nothing
       , lastWeatherFetch = Time.millisToPosix 0
       }
@@ -303,7 +303,7 @@ update msg model =
         GotWeather result ->
             case result of
                 Ok weather ->
-                    ( { model | weather = Just weather, lastWeatherFetch = model.currentTime }, Cmd.none )
+                    ( { model | weather = Just weather, lastWeatherFetch = Maybe.withDefault (Time.millisToPosix 0) model.currentTime }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -316,7 +316,7 @@ update msg model =
                 shouldFetchWeather = timeSinceLastWeatherFetch >= weatherRefreshInterval
                 weatherCmd = if shouldFetchWeather then fetchWeather else Cmd.none
             in
-            ( { model | currentTime = time }, Cmd.batch [ fetchData, weatherCmd ] )
+            ( { model | currentTime = Just time }, Cmd.batch [ fetchData, weatherCmd ] )
 
         UrlChanged url ->
             ( { model | page = urlToPage url }, Cmd.none )
@@ -659,10 +659,15 @@ viewBody model =
 
 viewGraphPage : Model -> Element Msg
 viewGraphPage model =
-    if model.loading then
-        el [] (text "Loading...")
-    else
-        Graph.viewGraph model.balanceSnapshots model.workLogs model.currentTime model.weather
+    case ( model.loading, model.currentTime ) of
+        ( True, _ ) ->
+            el [] (text "Loading...")
+
+        ( _, Nothing ) ->
+            el [] (text "Loading...")
+
+        ( False, Just time ) ->
+            Graph.viewGraph model.balanceSnapshots model.workLogs time model.weather
 
 viewEntryPage : Model -> Element Msg
 viewEntryPage model =

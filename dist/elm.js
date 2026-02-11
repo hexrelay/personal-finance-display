@@ -6568,7 +6568,7 @@ var $author$project$Main$init = F3(
 			{
 				d: $author$project$Main$emptyBalanceForm(todayDays),
 				cf: _List_Nil,
-				aZ: $elm$time$Time$millisToPosix(0),
+				aZ: $elm$core$Maybe$Nothing,
 				z: $elm$core$Maybe$Nothing,
 				cM: _List_Nil,
 				bU: key,
@@ -7410,7 +7410,10 @@ var $author$project$Main$update = F2(
 						_Utils_update(
 							model,
 							{
-								bq: model.aZ,
+								bq: A2(
+									$elm$core$Maybe$withDefault,
+									$elm$time$Time$millisToPosix(0),
+									model.aZ),
 								bI: $elm$core$Maybe$Just(weather)
 							}),
 						$elm$core$Platform$Cmd$none);
@@ -7426,7 +7429,9 @@ var $author$project$Main$update = F2(
 				return _Utils_Tuple2(
 					_Utils_update(
 						model,
-						{aZ: time}),
+						{
+							aZ: $elm$core$Maybe$Just(time)
+						}),
 					$elm$core$Platform$Cmd$batch(
 						_List_fromArray(
 							[$author$project$Main$fetchData, weatherCmd])));
@@ -18820,10 +18825,24 @@ var $author$project$Graph$viewGraph = F4(
 			svgGraph);
 	});
 var $author$project$Main$viewGraphPage = function (model) {
-	return model.aF ? A2(
-		$mdgriffith$elm_ui$Element$el,
-		_List_Nil,
-		$mdgriffith$elm_ui$Element$text('Loading...')) : A4($author$project$Graph$viewGraph, model.cf, model.dF, model.aZ, model.bI);
+	var _v0 = _Utils_Tuple2(model.aF, model.aZ);
+	if (_v0.a) {
+		return A2(
+			$mdgriffith$elm_ui$Element$el,
+			_List_Nil,
+			$mdgriffith$elm_ui$Element$text('Loading...'));
+	} else {
+		if (_v0.b.$ === 1) {
+			var _v1 = _v0.b;
+			return A2(
+				$mdgriffith$elm_ui$Element$el,
+				_List_Nil,
+				$mdgriffith$elm_ui$Element$text('Loading...'));
+		} else {
+			var time = _v0.b.a;
+			return A4($author$project$Graph$viewGraph, model.cf, model.dF, time, model.bI);
+		}
+	}
 };
 var $author$project$Main$viewBody = function (model) {
 	var _v0 = model.aI;
