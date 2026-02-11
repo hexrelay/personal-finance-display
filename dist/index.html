@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: auto; }
+        /* Hide number input spinners */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script src="elm.js"></script>
+    <script>
+        // Get today's date in YYYY-MM-DD format (local time, not UTC)
+        var now = new Date();
+        var today = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
+
+        Elm.Main.init({
+            node: document.getElementById('app'),
+            flags: { today: today }
+        });
+
+        // Check for code updates, reload only if changed
+        (function() {
+            var currentHash = null;
+
+            async function checkForUpdates() {
+                try {
+                    var resp = await fetch('/elm.js', { method: 'HEAD' });
+                    var newHash = resp.headers.get('Last-Modified') || resp.headers.get('ETag');
+
+                    if (currentHash === null) {
+                        currentHash = newHash;
+                    } else if (newHash !== currentHash) {
+                        location.reload();
+                    }
+                } catch (e) {}
+            }
+
+            setInterval(checkForUpdates, 500);
+        })();
+    </script>
+</body>
+</html>

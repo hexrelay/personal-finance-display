@@ -1,0 +1,13 @@
+# Elm
+frontend/elm-stuff/
+frontend/elm.js
+
+# Rust
+backend/target/
+
+# Server data (created at runtime)
+data.json
+
+# OS
+.DS_Store
+frontend/node_modules/
