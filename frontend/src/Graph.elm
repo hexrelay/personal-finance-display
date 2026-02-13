@@ -521,105 +521,43 @@ drawXAxis yMinK endDay =
                 ]
                 []
 
-        -- Week sections
-        weekRowY = y0 + 42
-        weekRowHeight = 16
-        weeks = getWeekRanges startDate endDay
-        weekSections =
-            weeks
-                |> List.indexedMap (\i ( weekStart, weekEnd ) ->
-                    let
-                        x1 = dayToX endDay (max weekStart startDate)
-                        x2 = dayToX endDay (min (weekEnd + 1) (endDay + 1))
-                        bgColor = if modBy 2 i == 0 then "rgba(0,0,0,0.1)" else "rgba(0,0,0,0.2)"
-                        weekLabel = "week of " ++ formatShortDate weekStart
-                    in
-                    g []
-                        [ rect
-                            [ SA.x (String.fromFloat x1)
-                            , SA.y (String.fromFloat weekRowY)
-                            , SA.width (String.fromFloat (x2 - x1))
-                            , SA.height (String.fromFloat weekRowHeight)
-                            , SA.fill bgColor
-                            ]
-                            []
-                        , text_
-                            [ SA.x (String.fromFloat ((x1 + x2) / 2))
-                            , SA.y (String.fromFloat (weekRowY + 12))
-                            , SA.fill colorText
-                            , SA.fontSize "10"
-                            , SA.textAnchor "middle"
-                            ]
-                            [ Svg.text weekLabel ]
-                        ]
-                )
-
-        -- Month sections
-        monthRowY = weekRowY + weekRowHeight
-        monthRowHeight = 16
+        -- Month+Year sections (single row, ~3x height of old individual rows)
+        monthYearRowY = y0 + 42
+        monthYearRowHeight = 48
         months = getMonthRanges startDate endDay
-        monthSections =
+        monthYearSections =
             months
                 |> List.indexedMap (\i ( monthStart, monthEnd, monthName ) ->
                     let
                         x1 = dayToX endDay (max monthStart startDate)
                         x2 = dayToX endDay (min (monthEnd + 1) (endDay + 1))
                         bgColor = if modBy 2 i == 0 then "rgba(0,0,0,0.15)" else "rgba(0,0,0,0.25)"
+                        -- Get year from monthStart
+                        yearNum = getYearFromDay monthStart
+                        label = monthName ++ " " ++ String.fromInt yearNum
                     in
                     g []
                         [ rect
                             [ SA.x (String.fromFloat x1)
-                            , SA.y (String.fromFloat monthRowY)
+                            , SA.y (String.fromFloat monthYearRowY)
                             , SA.width (String.fromFloat (x2 - x1))
-                            , SA.height (String.fromFloat monthRowHeight)
+                            , SA.height (String.fromFloat monthYearRowHeight)
                             , SA.fill bgColor
                             ]
                             []
                         , text_
                             [ SA.x (String.fromFloat ((x1 + x2) / 2))
-                            , SA.y (String.fromFloat (monthRowY + 12))
+                            , SA.y (String.fromFloat (monthYearRowY + 30))
                             , SA.fill colorText
-                            , SA.fontSize "11"
-                            , SA.textAnchor "middle"
-                            ]
-                            [ Svg.text monthName ]
-                        ]
-                )
-
-        -- Year sections
-        yearRowY = monthRowY + monthRowHeight
-        yearRowHeight = 16
-        years = getYearRanges startDate endDay
-        yearSections =
-            years
-                |> List.indexedMap (\i ( yearStart, yearEnd, yearNum ) ->
-                    let
-                        x1 = dayToX endDay (max yearStart startDate)
-                        x2 = dayToX endDay (min (yearEnd + 1) (endDay + 1))
-                        bgColor = if modBy 2 i == 0 then "rgba(0,0,0,0.2)" else "rgba(0,0,0,0.3)"
-                    in
-                    g []
-                        [ rect
-                            [ SA.x (String.fromFloat x1)
-                            , SA.y (String.fromFloat yearRowY)
-                            , SA.width (String.fromFloat (x2 - x1))
-                            , SA.height (String.fromFloat yearRowHeight)
-                            , SA.fill bgColor
-                            ]
-                            []
-                        , text_
-                            [ SA.x (String.fromFloat ((x1 + x2) / 2))
-                            , SA.y (String.fromFloat (yearRowY + 12))
-                            , SA.fill colorText
-                            , SA.fontSize "11"
+                            , SA.fontSize "16"
                             , SA.textAnchor "middle"
                             , SA.fontWeight "bold"
                             ]
-                            [ Svg.text (String.fromInt yearNum) ]
+                            [ Svg.text label ]
                         ]
                 )
     in
-    g [] (axisLine :: dayTicks ++ [ finalTick ] ++ weekSections ++ monthSections ++ yearSections)
+    g [] (axisLine :: dayTicks ++ [ finalTick ] ++ monthYearSections)
 
 
 -- Helper to get Sunday of a week containing a given day
@@ -664,6 +602,16 @@ formatShortDate day =
         dayNum = parts |> List.drop 2 |> List.head |> Maybe.andThen String.toInt |> Maybe.withDefault 1
     in
     String.fromInt month ++ "/" ++ String.fromInt dayNum
+
+
+-- Get year number from a day
+getYearFromDay : Int -> Int
+getYearFromDay day =
+    let
+        dateStr = Calculations.daysToDateString day
+        parts = String.split "-" dateStr
+    in
+    parts |> List.head |> Maybe.andThen String.toInt |> Maybe.withDefault 2026
 
 
 -- Get list of (monthStart, monthEnd, monthName) tuples covering the date range

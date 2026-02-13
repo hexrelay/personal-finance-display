@@ -155,11 +155,53 @@ sundayOfWeek days =
 calculateIncomingPay : Int -> List WorkLog -> Float
 calculateIncomingPay targetDay workLogs =
     let
+        -- Separate museum logs from other jobs
+        museumLogs = List.filter (\w -> w.jobId == "museum") workLogs
+        otherLogs = List.filter (\w -> w.jobId /= "museum") workLogs
+
+        -- Museum: simple strategy - payCashed means all pay up to that day is cashed
+        museumPay = calculateMuseumPay targetDay museumLogs
+
+        -- Other jobs: week-based strategy (current + previous week unless cashed)
+        otherPay = calculateWeekBasedPay targetDay otherLogs
+    in
+    museumPay + otherPay
+
+
+-- Museum job: when payCashed=true on a day, all pay up to and including that day is cashed
+calculateMuseumPay : Int -> List WorkLog -> Float
+calculateMuseumPay targetDay logs =
+    let
+        logsUpToTarget =
+            logs
+                |> List.filter (\w -> dateToDays w.date <= targetDay)
+                |> List.sortBy .date
+
+        -- Find the most recent log with payCashed=true
+        lastCashedDay =
+            logsUpToTarget
+                |> List.filter .payCashed
+                |> List.map (\w -> dateToDays w.date)
+                |> List.maximum
+                |> Maybe.withDefault -1
+
+        -- Only count logs after the last cashed day
+        uncashedLogs =
+            logsUpToTarget
+                |> List.filter (\w -> dateToDays w.date > lastCashedDay)
+    in
+    calculateWeekPayWithOvertime uncashedLogs
+
+
+-- Week-based pay calculation for non-museum jobs
+calculateWeekBasedPay : Int -> List WorkLog -> Float
+calculateWeekBasedPay targetDay logs =
+    let
         currentWeekSunday = sundayOfWeek targetDay
         previousWeekSunday = currentWeekSunday - 7
 
         logsUpToTarget =
-            workLogs
+            logs
                 |> List.filter (\w -> dateToDays w.date <= targetDay)
 
         currentWeekLogs =

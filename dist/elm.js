@@ -15461,6 +15461,46 @@ var $author$project$Calculations$calculateWeekPayWithOvertime = function (logs) 
 	return result.bG;
 };
 var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Calculations$calculateMuseumPay = F2(
+	function (targetDay, logs) {
+		var logsUpToTarget = A2(
+			$elm$core$List$sortBy,
+			function ($) {
+				return $.ag;
+			},
+			A2(
+				$elm$core$List$filter,
+				function (w) {
+					return _Utils_cmp(
+						$author$project$Calculations$dateToDays(w.ag),
+						targetDay) < 1;
+				},
+				logs));
+		var lastCashedDay = A2(
+			$elm$core$Maybe$withDefault,
+			-1,
+			$elm$core$List$maximum(
+				A2(
+					$elm$core$List$map,
+					function (w) {
+						return $author$project$Calculations$dateToDays(w.ag);
+					},
+					A2(
+						$elm$core$List$filter,
+						function ($) {
+							return $.bu;
+						},
+						logsUpToTarget))));
+		var uncashedLogs = A2(
+			$elm$core$List$filter,
+			function (w) {
+				return _Utils_cmp(
+					$author$project$Calculations$dateToDays(w.ag),
+					lastCashedDay) > 0;
+			},
+			logsUpToTarget);
+		return $author$project$Calculations$calculateWeekPayWithOvertime(uncashedLogs);
+	});
 var $elm$core$Dict$values = function (dict) {
 	return A3(
 		$elm$core$Dict$foldr,
@@ -15502,8 +15542,8 @@ var $author$project$Calculations$calculateWeekPayByJob = function (logs) {
 		$elm$core$Dict$values(logsByJob));
 	return $elm$core$List$sum(payPerJob);
 };
-var $author$project$Calculations$calculateIncomingPay = F2(
-	function (targetDay, workLogs) {
+var $author$project$Calculations$calculateWeekBasedPay = F2(
+	function (targetDay, logs) {
 		var logsUpToTarget = A2(
 			$elm$core$List$filter,
 			function (w) {
@@ -15511,7 +15551,7 @@ var $author$project$Calculations$calculateIncomingPay = F2(
 					$author$project$Calculations$dateToDays(w.ag),
 					targetDay) < 1;
 			},
-			workLogs);
+			logs);
 		var currentWeekSunday = $author$project$Calculations$sundayOfWeek(targetDay);
 		var previousWeekSunday = currentWeekSunday - 7;
 		var previousWeekLogs = A2(
@@ -15538,6 +15578,24 @@ var $author$project$Calculations$calculateIncomingPay = F2(
 			currentWeekLogs);
 		var previousWeekPay = hasPayCashedInCurrentWeek ? 0 : $author$project$Calculations$calculateWeekPayByJob(previousWeekLogs);
 		return currentWeekPay + previousWeekPay;
+	});
+var $author$project$Calculations$calculateIncomingPay = F2(
+	function (targetDay, workLogs) {
+		var otherLogs = A2(
+			$elm$core$List$filter,
+			function (w) {
+				return w.bp !== 'museum';
+			},
+			workLogs);
+		var otherPay = A2($author$project$Calculations$calculateWeekBasedPay, targetDay, otherLogs);
+		var museumLogs = A2(
+			$elm$core$List$filter,
+			function (w) {
+				return w.bp === 'museum';
+			},
+			workLogs);
+		var museumPay = A2($author$project$Calculations$calculateMuseumPay, targetDay, museumLogs);
+		return museumPay + otherPay;
 	});
 var $elm$core$List$member = F2(
 	function (x, xs) {
@@ -17780,27 +17838,6 @@ var $author$project$Graph$dayLabelParts = function (day) {
 		dy: weekdayStr
 	};
 };
-var $author$project$Graph$formatShortDate = function (day) {
-	var dateStr = $author$project$Calculations$daysToDateString(day);
-	var parts = A2($elm$core$String$split, '-', dateStr);
-	var dayNum = A2(
-		$elm$core$Maybe$withDefault,
-		1,
-		A2(
-			$elm$core$Maybe$andThen,
-			$elm$core$String$toInt,
-			$elm$core$List$head(
-				A2($elm$core$List$drop, 2, parts))));
-	var month = A2(
-		$elm$core$Maybe$withDefault,
-		1,
-		A2(
-			$elm$core$Maybe$andThen,
-			$elm$core$String$toInt,
-			$elm$core$List$head(
-				A2($elm$core$List$drop, 1, parts))));
-	return $elm$core$String$fromInt(month) + ('/' + $elm$core$String$fromInt(dayNum));
-};
 var $author$project$Graph$getMonthRanges = F2(
 	function (rangeStart, rangeEnd) {
 		var monthName = function (m) {
@@ -17892,148 +17929,32 @@ var $author$project$Graph$getMonthRanges = F2(
 			});
 		return A2(buildMonths, rangeStart, _List_Nil);
 	});
-var $author$project$Graph$sundayOfWeek = function (day) {
-	var dayOfWeek = A2($elm$core$Basics$modBy, 7, day);
-	return (!dayOfWeek) ? (day - 6) : (day - (dayOfWeek - 1));
+var $author$project$Graph$getYearFromDay = function (day) {
+	var dateStr = $author$project$Calculations$daysToDateString(day);
+	var parts = A2($elm$core$String$split, '-', dateStr);
+	return A2(
+		$elm$core$Maybe$withDefault,
+		2026,
+		A2(
+			$elm$core$Maybe$andThen,
+			$elm$core$String$toInt,
+			$elm$core$List$head(parts)));
 };
-var $author$project$Graph$getWeekRanges = F2(
-	function (rangeStart, rangeEnd) {
-		var firstSunday = $author$project$Graph$sundayOfWeek(rangeStart);
-		var buildWeeks = F2(
-			function (sunday, acc) {
-				buildWeeks:
-				while (true) {
-					if (_Utils_cmp(sunday, rangeEnd) > 0) {
-						return $elm$core$List$reverse(acc);
-					} else {
-						var weekEnd = sunday + 6;
-						var $temp$sunday = sunday + 7,
-							$temp$acc = A2(
-							$elm$core$List$cons,
-							_Utils_Tuple2(sunday, weekEnd),
-							acc);
-						sunday = $temp$sunday;
-						acc = $temp$acc;
-						continue buildWeeks;
-					}
-				}
-			});
-		return A2(buildWeeks, firstSunday, _List_Nil);
-	});
-var $author$project$Graph$getYearRanges = F2(
-	function (rangeStart, rangeEnd) {
-		var getYear = function (day) {
-			var dateStr = $author$project$Calculations$daysToDateString(day);
-			var parts = A2($elm$core$String$split, '-', dateStr);
-			return A2(
-				$elm$core$Maybe$withDefault,
-				2026,
-				A2(
-					$elm$core$Maybe$andThen,
-					$elm$core$String$toInt,
-					$elm$core$List$head(parts)));
-		};
-		var firstDayOfYear = function (year) {
-			return $author$project$Calculations$dateToDays(
-				$elm$core$String$fromInt(year) + '-01-01');
-		};
-		var buildYears = F2(
-			function (currentDay, acc) {
-				buildYears:
-				while (true) {
-					if (_Utils_cmp(currentDay, rangeEnd) > 0) {
-						return $elm$core$List$reverse(acc);
-					} else {
-						var year = getYear(currentDay);
-						var yearEnd = firstDayOfYear(year + 1) - 1;
-						var yearStart = firstDayOfYear(year);
-						var $temp$currentDay = yearEnd + 1,
-							$temp$acc = A2(
-							$elm$core$List$cons,
-							_Utils_Tuple3(yearStart, yearEnd, year),
-							acc);
-						currentDay = $temp$currentDay;
-						acc = $temp$acc;
-						continue buildYears;
-					}
-				}
-			});
-		return A2(buildYears, rangeStart, _List_Nil);
-	});
 var $elm$svg$Svg$Attributes$textAnchor = _VirtualDom_attribute('text-anchor');
 var $author$project$Graph$drawXAxis = F2(
 	function (yMinK, endDay) {
-		var years = A2($author$project$Graph$getYearRanges, $author$project$Graph$startDate, endDay);
-		var yearRowHeight = 16;
 		var y0 = A2($author$project$Graph$valueToY, yMinK, 0);
-		var weeks = A2($author$project$Graph$getWeekRanges, $author$project$Graph$startDate, endDay);
-		var weekRowY = y0 + 42;
-		var weekRowHeight = 16;
-		var weekSections = A2(
-			$elm$core$List$indexedMap,
-			F2(
-				function (i, _v2) {
-					var weekStart = _v2.a;
-					var weekEnd = _v2.b;
-					var x2 = A2(
-						$author$project$Graph$dayToX,
-						endDay,
-						A2($elm$core$Basics$min, weekEnd + 1, endDay + 1));
-					var x1 = A2(
-						$author$project$Graph$dayToX,
-						endDay,
-						A2($elm$core$Basics$max, weekStart, $author$project$Graph$startDate));
-					var weekLabel = 'week of ' + $author$project$Graph$formatShortDate(weekStart);
-					var bgColor = (!A2($elm$core$Basics$modBy, 2, i)) ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.2)';
-					return A2(
-						$elm$svg$Svg$g,
-						_List_Nil,
-						_List_fromArray(
-							[
-								A2(
-								$elm$svg$Svg$rect,
-								_List_fromArray(
-									[
-										$elm$svg$Svg$Attributes$x(
-										$elm$core$String$fromFloat(x1)),
-										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(weekRowY)),
-										$elm$svg$Svg$Attributes$width(
-										$elm$core$String$fromFloat(x2 - x1)),
-										$elm$svg$Svg$Attributes$height(
-										$elm$core$String$fromFloat(weekRowHeight)),
-										$elm$svg$Svg$Attributes$fill(bgColor)
-									]),
-								_List_Nil),
-								A2(
-								$elm$svg$Svg$text_,
-								_List_fromArray(
-									[
-										$elm$svg$Svg$Attributes$x(
-										$elm$core$String$fromFloat((x1 + x2) / 2)),
-										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(weekRowY + 12)),
-										$elm$svg$Svg$Attributes$fill($author$project$Graph$colorText),
-										$elm$svg$Svg$Attributes$fontSize('10'),
-										$elm$svg$Svg$Attributes$textAnchor('middle')
-									]),
-								_List_fromArray(
-									[
-										$elm$svg$Svg$text(weekLabel)
-									]))
-							]));
-				}),
-			weeks);
 		var months = A2($author$project$Graph$getMonthRanges, $author$project$Graph$startDate, endDay);
-		var monthRowY = weekRowY + weekRowHeight;
-		var monthRowHeight = 16;
-		var monthSections = A2(
+		var monthYearRowY = y0 + 42;
+		var monthYearRowHeight = 48;
+		var monthYearSections = A2(
 			$elm$core$List$indexedMap,
 			F2(
-				function (i, _v1) {
-					var monthStart = _v1.a;
-					var monthEnd = _v1.b;
-					var monthName = _v1.c;
+				function (i, _v0) {
+					var monthStart = _v0.a;
+					var monthEnd = _v0.b;
+					var monthName = _v0.c;
+					var yearNum = $author$project$Graph$getYearFromDay(monthStart);
 					var x2 = A2(
 						$author$project$Graph$dayToX,
 						endDay,
@@ -18042,6 +17963,7 @@ var $author$project$Graph$drawXAxis = F2(
 						$author$project$Graph$dayToX,
 						endDay,
 						A2($elm$core$Basics$max, monthStart, $author$project$Graph$startDate));
+					var label = monthName + (' ' + $elm$core$String$fromInt(yearNum));
 					var bgColor = (!A2($elm$core$Basics$modBy, 2, i)) ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.25)';
 					return A2(
 						$elm$svg$Svg$g,
@@ -18055,11 +17977,11 @@ var $author$project$Graph$drawXAxis = F2(
 										$elm$svg$Svg$Attributes$x(
 										$elm$core$String$fromFloat(x1)),
 										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(monthRowY)),
+										$elm$core$String$fromFloat(monthYearRowY)),
 										$elm$svg$Svg$Attributes$width(
 										$elm$core$String$fromFloat(x2 - x1)),
 										$elm$svg$Svg$Attributes$height(
-										$elm$core$String$fromFloat(monthRowHeight)),
+										$elm$core$String$fromFloat(monthYearRowHeight)),
 										$elm$svg$Svg$Attributes$fill(bgColor)
 									]),
 								_List_Nil),
@@ -18070,76 +17992,19 @@ var $author$project$Graph$drawXAxis = F2(
 										$elm$svg$Svg$Attributes$x(
 										$elm$core$String$fromFloat((x1 + x2) / 2)),
 										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(monthRowY + 12)),
+										$elm$core$String$fromFloat(monthYearRowY + 30)),
 										$elm$svg$Svg$Attributes$fill($author$project$Graph$colorText),
-										$elm$svg$Svg$Attributes$fontSize('11'),
-										$elm$svg$Svg$Attributes$textAnchor('middle')
-									]),
-								_List_fromArray(
-									[
-										$elm$svg$Svg$text(monthName)
-									]))
-							]));
-				}),
-			months);
-		var yearRowY = monthRowY + monthRowHeight;
-		var yearSections = A2(
-			$elm$core$List$indexedMap,
-			F2(
-				function (i, _v0) {
-					var yearStart = _v0.a;
-					var yearEnd = _v0.b;
-					var yearNum = _v0.c;
-					var x2 = A2(
-						$author$project$Graph$dayToX,
-						endDay,
-						A2($elm$core$Basics$min, yearEnd + 1, endDay + 1));
-					var x1 = A2(
-						$author$project$Graph$dayToX,
-						endDay,
-						A2($elm$core$Basics$max, yearStart, $author$project$Graph$startDate));
-					var bgColor = (!A2($elm$core$Basics$modBy, 2, i)) ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.3)';
-					return A2(
-						$elm$svg$Svg$g,
-						_List_Nil,
-						_List_fromArray(
-							[
-								A2(
-								$elm$svg$Svg$rect,
-								_List_fromArray(
-									[
-										$elm$svg$Svg$Attributes$x(
-										$elm$core$String$fromFloat(x1)),
-										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(yearRowY)),
-										$elm$svg$Svg$Attributes$width(
-										$elm$core$String$fromFloat(x2 - x1)),
-										$elm$svg$Svg$Attributes$height(
-										$elm$core$String$fromFloat(yearRowHeight)),
-										$elm$svg$Svg$Attributes$fill(bgColor)
-									]),
-								_List_Nil),
-								A2(
-								$elm$svg$Svg$text_,
-								_List_fromArray(
-									[
-										$elm$svg$Svg$Attributes$x(
-										$elm$core$String$fromFloat((x1 + x2) / 2)),
-										$elm$svg$Svg$Attributes$y(
-										$elm$core$String$fromFloat(yearRowY + 12)),
-										$elm$svg$Svg$Attributes$fill($author$project$Graph$colorText),
-										$elm$svg$Svg$Attributes$fontSize('11'),
+										$elm$svg$Svg$Attributes$fontSize('16'),
 										$elm$svg$Svg$Attributes$textAnchor('middle'),
 										$elm$svg$Svg$Attributes$fontWeight('bold')
 									]),
 								_List_fromArray(
 									[
-										$elm$svg$Svg$text(
-										$elm$core$String$fromInt(yearNum))
+										$elm$svg$Svg$text(label)
 									]))
 							]));
 				}),
-			years);
+			months);
 		var finalTick = function () {
 			var x = A2($author$project$Graph$dayToX, endDay, endDay + 1);
 			return A2(
@@ -18248,9 +18113,7 @@ var $author$project$Graph$drawXAxis = F2(
 					_Utils_ap(
 						_List_fromArray(
 							[finalTick]),
-						_Utils_ap(
-							weekSections,
-							_Utils_ap(monthSections, yearSections))))));
+						monthYearSections))));
 	});
 var $elm$core$Basics$abs = function (n) {
 	return (n < 0) ? (-n) : n;
