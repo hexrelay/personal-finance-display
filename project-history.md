@@ -391,3 +391,59 @@ Bug fix and new feature groundwork for AI weather summaries.
 3. Display AI summary on the graph page
 4. Configure scheduling (when to generate daily summary)
 
+---
+
+## Session 10
+
+**Date:** 2026-02-13 / 2026-02-14
+
+### Summary
+
+Bug fixes, UI polish, and infrastructure improvements.
+
+### Key Changes
+
+**Weather Refresh Fix:**
+- Fixed temperature display freezing after initial load
+- Added `lastWeatherFetch` tracking to Model
+- Weather now refreshes every 5 minutes in the Tick handler
+
+**Loading State Fix:**
+- Changed `currentTime` from `Time.Posix` to `Maybe Time.Posix`
+- Graph page shows "Loading..." until first Tick arrives
+- Prevents strange default values (epoch 0) from displaying on startup
+
+**Museum Pay Cashing Strategy:**
+- Added special pay cashing logic for museum job (jobId = "museum")
+- When `payCashed=true` on a museum work log, all pay up to and including that day is immediately considered cashed
+- Other jobs continue using week-based strategy (current + previous week unless cashed)
+
+**X-Axis Simplification:**
+- Collapsed three separate rows (week, month, year) into single "Month Year" row
+- New row height ~48px (3x original row height)
+- Shows format like "January 2026", "February 2026"
+- Added `getYearFromDay` helper function
+
+**GitHub Repository:**
+- Project pushed to new public repo: `hexrelay/personal-finance-display`
+- Pi pulls from this repo for deployments
+
+**Infrastructure:**
+- Installed Docker on robot droplet for cross-compilation
+- Added twolebot user to docker group
+- Cross-compilation with `cross` now works using `sg docker -c "..."`
+
+### Files Modified
+
+- `frontend/src/Main.elm` - Weather refresh interval, Maybe currentTime
+- `frontend/src/Calculations.elm` - Museum pay cashing logic (`calculateMuseumPay`, `calculateWeekBasedPay`)
+- `frontend/src/Graph.elm` - Collapsed date rows, `getYearFromDay` helper
+
+### Deployment Note
+
+Cross-compilation for Pi requires Docker. Use:
+```bash
+sg docker -c ". ~/.cargo/env && cd /home/twolebot/projects/personal-finance-display && make build-pi"
+```
+Or after a fresh login, `make build-pi` should work directly.
+
