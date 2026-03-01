@@ -1,7 +1,7 @@
 module Graph exposing (viewGraph, viewMiniGraph)
 
 import Api.Types exposing (BalanceSnapshot, WorkLog, Weather)
-import Calculations exposing (dateToDays, calculateIncomingPay, calculateDailyPayForWorkLogs)
+import Calculations exposing (dateToDays, calculateIncomingPay, calculateIncomingPayForJob, calculateDailyPayForWorkLogs)
 import Element exposing (Element, html, el, text, row, column, inFront, alignRight, alignTop, padding, paddingEach, spacing, rgb255, rgba)
 import Element.Background as Background
 import Element.Border as Border
@@ -45,8 +45,11 @@ yMax = 20.0
 colorGreen : String
 colorGreen = "#4ade80"
 
-colorEarnedLine : String
-colorEarnedLine = "#1e40af"
+colorEarnedMain : String
+colorEarnedMain = "#1e40af"
+
+colorEarnedAdditional : String
+colorEarnedAdditional = "#60a5fa"
 
 colorYellow : String
 colorYellow = "#fbbf24"
@@ -115,7 +118,8 @@ parseNote encoded =
 type alias DayData =
     { day : Int
     , checking : Float
-    , earnedMoney : Float
+    , earnedMoneyMain : Float      -- Alborn job only + checking
+    , earnedMoneyAll : Float       -- All jobs + checking
     , dailyPayEarned : Float
     , creditDrawn : Float
     , personalDebt : Float
@@ -158,7 +162,8 @@ buildDayData snapshots workLogs =
         buildForDay : Int -> DayData
         buildForDay day =
             let
-                incomingPay = calculateIncomingPay day workLogs
+                incomingPayAll = calculateIncomingPay day workLogs
+                incomingPayMain = calculateIncomingPayForJob "alborn" day workLogs
                 dailyPay = calculateDailyPayForWorkLogs day workLogs
 
                 -- Use snapshot for this day, or carry forward from most recent
@@ -168,7 +173,8 @@ buildDayData snapshots workLogs =
                 Just snapshot ->
                     { day = day
                     , checking = snapshot.checking / 1000
-                    , earnedMoney = (snapshot.checking + incomingPay) / 1000
+                    , earnedMoneyMain = (snapshot.checking + incomingPayMain) / 1000
+                    , earnedMoneyAll = (snapshot.checking + incomingPayAll) / 1000
                     , dailyPayEarned = dailyPay / 1000
                     , creditDrawn = (snapshot.creditLimit - snapshot.creditAvailable) / 1000
                     , personalDebt = snapshot.personalDebt / 1000
@@ -180,7 +186,8 @@ buildDayData snapshots workLogs =
                     -- No snapshot yet, use zeros (shouldn't happen in practice)
                     { day = day
                     , checking = 0
-                    , earnedMoney = incomingPay / 1000
+                    , earnedMoneyMain = incomingPayMain / 1000
+                    , earnedMoneyAll = incomingPayAll / 1000
                     , dailyPayEarned = dailyPay / 1000
                     , creditDrawn = 0
                     , personalDebt = 0
@@ -313,6 +320,11 @@ drawStepPolygon yMinK endDay baseline dayValues color =
 
 drawStepLine : Float -> Int -> List ( Int, Float ) -> String -> Svg msg
 drawStepLine yMinK endDay dayValues color =
+    drawStepLineWithWidth yMinK endDay dayValues color "3"
+
+
+drawStepLineWithWidth : Float -> Int -> List ( Int, Float ) -> String -> String -> Svg msg
+drawStepLineWithWidth yMinK endDay dayValues color strokeWidth =
     if List.isEmpty dayValues then
         g [] []
     else
@@ -353,7 +365,7 @@ drawStepLine yMinK endDay dayValues color =
             [ SA.points pointsStr
             , SA.fill "none"
             , SA.stroke color
-            , SA.strokeWidth "3"
+            , SA.strokeWidth strokeWidth
             ]
             []
 
@@ -372,7 +384,7 @@ drawDailyPaySegments yMinK endDay dayDataList =
                         prevEarned =
                             case prevMaybe of
                                 Just prev ->
-                                    prev.earnedMoney
+                                    prev.earnedMoneyAll
 
                                 Nothing ->
                                     current.checking
@@ -425,7 +437,7 @@ drawNotes yMinK endDay dayDataList =
 
                         x = dayToX endDay dayData.day + (dayToX endDay (dayData.day + 1) - dayToX endDay dayData.day) / 2
 
-                        dotY = valueToY yMinK (dayData.earnedMoney + 0.5)
+                        dotY = valueToY yMinK (dayData.earnedMoneyAll + 0.5)
                         dotRadius = 4
 
                         textX = x + 8
@@ -868,11 +880,19 @@ viewGraph snapshots workLogs currentTime maybeWeather =
 
         dailyPaySegments = drawDailyPaySegments yMinK endDay dayData
 
-        earnedValues =
+        -- Main line: Alborn only (thick dark blue)
+        earnedMainValues =
             dayData
-                |> List.map (\d -> ( d.day, d.earnedMoney ))
+                |> List.map (\d -> ( d.day, d.earnedMoneyMain ))
 
-        earnedLine = drawStepLine yMinK endDay earnedValues colorEarnedLine
+        earnedMainLine = drawStepLine yMinK endDay earnedMainValues colorEarnedMain
+
+        -- Additional line: All jobs (thin lighter blue)
+        earnedAllValues =
+            dayData
+                |> List.map (\d -> ( d.day, d.earnedMoneyAll ))
+
+        earnedAllLine = drawStepLineWithWidth yMinK endDay earnedAllValues colorEarnedAdditional "2"
 
         debtValues =
             dayData
@@ -893,10 +913,19 @@ viewGraph snapshots workLogs currentTime maybeWeather =
                               , text = formatK latest.checking
                               }
                             ]
-                            ++ (if latest.earnedMoney > 0 then
-                                    [ { desiredY = valueToY yMinK latest.earnedMoney
-                                      , color = colorEarnedLine
-                                      , text = formatK latest.earnedMoney
+                            ++ (if latest.earnedMoneyMain > 0 then
+                                    [ { desiredY = valueToY yMinK latest.earnedMoneyMain
+                                      , color = colorEarnedMain
+                                      , text = formatK latest.earnedMoneyMain
+                                      }
+                                    ]
+                                else
+                                    []
+                               )
+                            ++ (if latest.earnedMoneyAll > 0 && latest.earnedMoneyAll /= latest.earnedMoneyMain then
+                                    [ { desiredY = valueToY yMinK latest.earnedMoneyAll
+                                      , color = colorEarnedAdditional
+                                      , text = formatK latest.earnedMoneyAll
                                       }
                                     ]
                                 else
@@ -1021,7 +1050,8 @@ viewGraph snapshots workLogs currentTime maybeWeather =
                         , checkingPolygon
                         , creditPolygon
                         , dailyPaySegments
-                        , earnedLine
+                        , earnedAllLine
+                        , earnedMainLine
                         , debtLine
                         , drawNotes yMinK endDay dayData
                         ]
@@ -1168,7 +1198,8 @@ viewMiniGraph snapshots workLogs =
 
         checkingValues = List.map (\d -> ( d.day, d.checking )) dayData
         creditValues = List.map (\d -> ( d.day, -d.creditDrawn )) dayData
-        earnedValues = List.map (\d -> ( d.day, d.earnedMoney )) dayData
+        earnedMainValues = List.map (\d -> ( d.day, d.earnedMoneyMain )) dayData
+        earnedAllValues = List.map (\d -> ( d.day, d.earnedMoneyAll )) dayData
         debtValues = List.map (\d -> ( d.day, d.personalDebt )) dayData
 
         y0 = miniValueToY 0
@@ -1201,7 +1232,8 @@ viewMiniGraph snapshots workLogs =
                 []
             , miniStepPolygon 0 checkingValues colorGreen
             , miniStepPolygon 0 creditValues colorYellow
-            , miniStepLine earnedValues colorEarnedLine
+            , miniStepLine earnedAllValues colorEarnedAdditional
+            , miniStepLine earnedMainValues colorEarnedMain
             , miniStepLine debtValues colorRed
             , zeroLine
             ]

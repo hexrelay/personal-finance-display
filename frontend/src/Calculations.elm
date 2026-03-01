@@ -1,5 +1,6 @@
 module Calculations exposing
     ( calculateIncomingPay
+    , calculateIncomingPayForJob
     , calculateDailyPayForWorkLogs
     , dateToDays
     , daysToDateString
@@ -166,6 +167,18 @@ calculateIncomingPay targetDay workLogs =
         otherPay = calculateWeekBasedPay targetDay otherLogs
     in
     museumPay + otherPay
+
+
+-- Calculate incoming pay for a specific job only
+calculateIncomingPayForJob : String -> Int -> List WorkLog -> Float
+calculateIncomingPayForJob jobId targetDay workLogs =
+    let
+        jobLogs = List.filter (\w -> w.jobId == jobId) workLogs
+    in
+    if jobId == "museum" then
+        calculateMuseumPay targetDay jobLogs
+    else
+        calculateWeekBasedPay targetDay jobLogs
 
 
 -- Museum job: when payCashed=true on a day, all pay up to and including that day is cashed
