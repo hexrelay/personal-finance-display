@@ -11,16 +11,16 @@ echo "Watching for updates every ${INTERVAL}s..."
 
 while true; do
     # Fetch latest from origin
-    git fetch origin master --quiet 2>/dev/null
+    git fetch origin main --quiet 2>/dev/null
 
     # Check if there are new commits
     LOCAL=$(git rev-parse HEAD 2>/dev/null)
-    REMOTE=$(git rev-parse origin/master 2>/dev/null)
+    REMOTE=$(git rev-parse origin/main 2>/dev/null)
 
     if [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') - New changes detected, updating..."
 
-        git pull origin master --quiet
+        git pull origin main --quiet
 
         # Restart the server
         sudo systemctl restart finance-display
