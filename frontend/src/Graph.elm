@@ -168,6 +168,12 @@ buildDayData snapshots workLogs =
 
                 -- Use snapshot for this day, or carry forward from most recent
                 maybeSnapshot = findSnapshotForDay day
+
+                -- Only show note if the snapshot is actually from this day (not carried forward)
+                snapshotIsFromThisDay =
+                    maybeSnapshot
+                        |> Maybe.map (\s -> dateToDays s.date == day)
+                        |> Maybe.withDefault False
             in
             case maybeSnapshot of
                 Just snapshot ->
@@ -179,7 +185,7 @@ buildDayData snapshots workLogs =
                     , creditDrawn = (snapshot.creditLimit - snapshot.creditAvailable) / 1000
                     , personalDebt = snapshot.personalDebt / 1000
                     , creditLimit = snapshot.creditLimit / 1000
-                    , note = parseNote snapshot.note
+                    , note = if snapshotIsFromThisDay then parseNote snapshot.note else Nothing
                     }
 
                 Nothing ->

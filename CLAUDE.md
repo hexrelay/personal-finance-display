@@ -61,9 +61,9 @@ dist/                 # Built frontend files (committed for Pi deployment)
 
 ## Raspberry Pi
 
-- **IP Address:** 216.152.181.254
+- **IP Address:** 216.137.239.117
 - **Username:** pi
-- **SSH:** `ssh -i ~/.ssh/pi_finance -p 2222 pi@216.152.181.254` (when enabled)
+- **SSH:** `ssh -i ~/.ssh/pi_finance -p 2222 pi@216.137.239.117` (when enabled)
 
 ## Deployment
 
