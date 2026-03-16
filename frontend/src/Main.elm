@@ -479,7 +479,7 @@ update msg model =
             in
             case maybeWorkLog of
                 Just newWorkLog ->
-                    if totalHours > 0 then
+                    if totalHours > 0 || f.payCashed then
                         ( { model | submitting = True, error = Nothing }
                         , submitWorkLog newWorkLog
                         )
