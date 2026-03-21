@@ -447,3 +447,43 @@ sg docker -c ". ~/.cargo/env && cd /home/twolebot/projects/personal-finance-disp
 ```
 Or after a fresh login, `make build-pi` should work directly.
 
+---
+
+## Session 10.5 (between sessions 10 and 11)
+
+**Focus:** Bug fixes and graph improvements (committed but not covered in previous session notes)
+
+### Changes (4 commits)
+
+1. **Pay-cashed zero hours fix** - Allow submitting pay-cashed entries with zero hours worked
+2. **Notes duplication fix** - Fixed notes being duplicated on days with carried-forward snapshots
+3. **Earned money line split** - Split earned money line into main job (Alborn) and additional (all jobs)
+4. **Deploy script branch fix** - Fixed deploy script to use `main` branch instead of `master`
+
+---
+
+## Session 11 (2026-03-21)
+
+**Focus:** DST timezone fix and weekday label simplification
+
+### Changes
+
+**DST Timezone Fix:**
+- Removed hardcoded `alaskaZone` (UTC-9 fixed offset) from `Graph.elm`
+- Added `Time.Zone` to Model, fetched via `Time.here` task on init
+- Graph now correctly handles daylight saving time transitions
+- Previously: dates shifted incorrectly during DST because the zone ignored DST rules
+
+**Weekday Labels:**
+- Changed x-axis day labels from 3-letter abbreviations (Mon, Tue) to single letters (M, T, W, T, F, S, S)
+
+### Files Modified
+
+- `frontend/src/Graph.elm` - Removed `alaskaZone`, accept zone parameter, single-letter weekday labels
+- `frontend/src/Main.elm` - Added `zone : Time.Zone` to Model, `GotZone` msg, `Task.perform Time.here`
+- `frontend/index.html` - Reverted timezone flags hack back to simple `{ today: today }`
+
+### Deployment
+
+Changes deployed to Pi via SCP to `/home/pi/finance-display/dist/elm.js`.
+
